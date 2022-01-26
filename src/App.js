@@ -1,89 +1,88 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
 import MoviesList from './components/MoviesList';
+import AddMovie from './components/AddMovie';
 import './App.css';
 
 function App() {
-  const [movies,setMovies] = useState([]);
-  const [isLoading, setLoading] = useState(false);
+  const [movies, setMovies] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [url,setUrl] = useState('https://swapi.py4e.com/api/films/');
 
-  const toggleUrl = () => {
-    if(url === 'https://swapi.py4e.com/api/films/'){
-      setUrl('https://swapi.py4e.com/api/film/');
-    }
-    else{
-      setUrl('https://swapi.py4e.com/api/films/');
-    }
-  }
-
-  const fetchRequestHandler = useCallback(async () => {
-    setLoading(true);
+  const fetchMoviesHandler = useCallback(async () => {
+    setIsLoading(true);
     setError(null);
-    try{
-      const fetchData = await fetch(url);
-      if(!fetchData.ok){
-        throw new Error("Something went wrong!");
+    try {
+      const response = await fetch('https://react-http-request-proje-bdcd3-default-rtdb.firebaseio.com/movies.json');
+      if (!response.ok) {
+        throw new Error('Something went wrong!');
       }
-      const jsonData = await fetchData.json();
-      const newdata = jsonData.results.map(value => {
-            return {
-              id: value.episode_id,
-              title: value.title,
-              releaseDate: value.release_date,
-              openingText: value.opening_crawl
-            }
-          });
-      setMovies(newdata);
-    }
-    catch(error){
+
+      const data = await response.json();
+      
+      const loadedMovies = [];
+      for(let key in data){
+        loadedMovies.push({
+          id: key,
+          title: data[key].title,
+          openingText: data[key].openingText,
+          releaseDate: data[key].releaseDate
+        });
+      }
+      // const transformedMovies = data.map((movieData) => {
+      //   return {
+      //     id: movieData.episode_id,
+      //     title: movieData.title,
+      //     openingText: movieData.opening_crawl,
+      //     releaseDate: movieData.release_date,
+      //   };
+      // });
+      setMovies(loadedMovies);
+    } catch (error) {
       setError(error.message);
     }
-    setLoading(false);
-  },[url]);
+    setIsLoading(false);
+  }, []);
 
-  useEffect(()=>{
-    fetchRequestHandler();
-  },[fetchRequestHandler]);
+  useEffect(() => {
+    fetchMoviesHandler();
+  }, [fetchMoviesHandler]);
 
-  // Shortcut to write function
+  async function addMovieHandler(movie) {
+    if(movie.title === '' || movie.openingText === '' || movie.releaseDate === '') return;
+    const data = await fetch('https://react-http-request-proje-bdcd3-default-rtdb.firebaseio.com/movies.json',{
+      method: 'POST',
+      body: JSON.stringify(movie),
+      header: {
+        'Content-Type': 'application/json'
+      }
+    });
+    console.log(data);
+  }
 
-  // const fetchRequestHandler = () => {
-  //   fetch('https://swapi.py4e.com/api/films/').then(response => response.json()).then(data => {
-  //     const newdata = data.results.map(value => {
-  //       return {
-  //         id: value.episode_id,
-  //         title: value.title,
-  //         releaseDate: value.release_date,
-  //         openingText: value.opening_crawl
-  //       }
-  //     })
-  //     setMovies(newdata);
-  //   })
-  // }
+  let content = <p>Found no movies.</p>;
 
-  let content = <p>Let's fetch some movies</p>
-
-  if(movies.length > 0){
+  if (movies.length > 0) {
     content = <MoviesList movies={movies} />;
   }
-  if(error){
+
+  if (error) {
     content = <p>{error}</p>;
   }
-  if(isLoading){
+
+  if (isLoading) {
     content = <p>Loading...</p>;
   }
 
   return (
     <React.Fragment>
       <section>
-        <button onClick={fetchRequestHandler}>Fetch Movies</button>
-        <button onClick={toggleUrl}>Toggle Error State</button>
+        <AddMovie onAddMovie={addMovieHandler} />
       </section>
       <section>
-        {content}
+        <button onClick={fetchMoviesHandler}>Fetch Movies</button>
       </section>
+      <section>{content}</section>
     </React.Fragment>
   );
 }
